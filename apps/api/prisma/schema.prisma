@@ -56,19 +56,20 @@ model Customer {
   @@index([email])
   @@index([phone])
   @@index([createdAt])
+  @@index([firstName, lastName])
   @@map("customers")
 }
 
 model Vehicle {
   id           String   @id @default(cuid())
   customerId   String   @map("customer_id")
-  make         String   // e.g. Toyota
-  model        String   // e.g. Camry
+  make         String
+  model        String
   year         Int
   licensePlate String   @unique @map("license_plate")
   vin          String?  @unique
   color        String?
-  mileage      Int?     // in miles at time of last service
+  mileage      Int?     @map("mileage_km") // in km (Indian standard)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -82,22 +83,23 @@ model Vehicle {
 }
 
 model Mechanic {
-  id             String                   @id @default(cuid())
-  firstName      String                   @map("first_name")
-  lastName       String                   @map("last_name")
-  email          String                   @unique
-  phone          String                   @unique
-  specializations MechanicSpecialization[]
-  isAvailable    Boolean                  @default(true) @map("is_available")
-  isActive       Boolean                  @default(true) @map("is_active")
-  rating         Float?                   // 0.0 – 5.0, updated after each booking
-  totalJobs      Int                      @default(0) @map("total_jobs")
-  // Last known GPS position (updated in real-time, Phase 3)
-  latitude       Float?
-  longitude      Float?
-  locationUpdatedAt DateTime?             @map("location_updated_at")
-  createdAt      DateTime                 @default(now()) @map("created_at")
-  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  id                String                   @id @default(cuid())
+  firstName         String                   @map("first_name")
+  lastName          String                   @map("last_name")
+  email             String                   @unique
+  phone             String                   @unique
+  specializations   MechanicSpecialization[]
+  isAvailable       Boolean                  @default(true) @map("is_available")
+  isActive          Boolean                  @default(true) @map("is_active")
+  rating            Float?                   // 0.0–5.0, updated after each booking
+  totalJobs         Int                      @default(0) @map("total_jobs")
+  experienceYears   Int                      @default(1) @map("experience_years")
+  // Last known GPS position (Phase 3 — real-time)
+  latitude          Float?
+  longitude         Float?
+  locationUpdatedAt DateTime?                @map("location_updated_at")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
 
   // Relations
   bookings Booking[]
@@ -105,6 +107,7 @@ model Mechanic {
   @@index([isAvailable])
   @@index([isActive])
   @@index([rating])
+  @@index([isActive, isAvailable])
   @@map("mechanics")
 }
 
@@ -112,7 +115,8 @@ model ServiceCategory {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
-  iconSlug    String?  @map("icon_slug") // For frontend icon mapping
+  iconSlug    String?  @map("icon_slug")
+  sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -128,7 +132,7 @@ model Service {
   name              String
   description       String?
   basePrice         Decimal         @map("base_price") @db.Decimal(10, 2)
-  estimatedDuration Int             @map("estimated_duration") // in minutes
+  estimatedDuration Int             @map("estimated_duration") // minutes
   isActive          Boolean         @default(true) @map("is_active")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
@@ -143,22 +147,23 @@ model Service {
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  customerId  String        @map("customer_id")
-  vehicleId   String        @map("vehicle_id")
-  mechanicId  String?       @map("mechanic_id") // Null until assigned
-  serviceId   String        @map("service_id")
-  status      BookingStatus @default(PENDING)
-  scheduledAt DateTime      @map("scheduled_at")
-  startedAt   DateTime?     @map("started_at")     // When mechanic starts work
-  completedAt DateTime?     @map("completed_at")   // When job is done
-  cancelledAt DateTime?     @map("cancelled_at")
-  notes       String?       // Customer-provided notes
-  internalNotes String?     @map("internal_notes") // Dispatcher notes
-  totalAmount Decimal?      @map("total_amount") @db.Decimal(10, 2) // Set on completion
-  rating      Int?          // Customer rating 1-5 (set after completion)
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id            String        @id @default(cuid())
+  customerId    String        @map("customer_id")
+  vehicleId     String        @map("vehicle_id")
+  mechanicId    String?       @map("mechanic_id")
+  serviceId     String        @map("service_id")
+  status        BookingStatus @default(PENDING)
+  scheduledAt   DateTime      @map("scheduled_at")
+  startedAt     DateTime?     @map("started_at")
+  completedAt   DateTime?     @map("completed_at")
+  cancelledAt   DateTime?     @map("cancelled_at")
+  notes         String?
+  internalNotes String?       @map("internal_notes")
+  totalAmount   Decimal?      @map("total_amount") @db.Decimal(10, 2)
+  rating        Int?          // 1–5 customer rating
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   customer Customer  @relation(fields: [customerId], references: [id])
@@ -170,7 +175,9 @@ model Booking {
   @@index([scheduledAt])
   @@index([customerId])
   @@index([mechanicId])
-  @@index([status, scheduledAt]) // Composite index for common dashboard query
+  @@index([status, scheduledAt])
   @@index([createdAt])
+  @@index([totalAmount])
+  @@index([mechanicId, status])
   @@map("bookings")
 }

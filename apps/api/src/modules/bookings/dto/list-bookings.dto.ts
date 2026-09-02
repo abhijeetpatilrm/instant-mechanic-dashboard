@@ -1,5 +1,5 @@
 import { BookingStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsDateString, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -28,4 +28,21 @@ export class ListBookingsDto extends PaginationDto {
   @IsOptional()
   @IsDateString()
   scheduledTo?: string;
+
+  @ApiPropertyOptional({ description: 'Free-text search across customer name, vehicle license plate and service name' })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiPropertyOptional({ description: 'Sort by field', enum: ['scheduledAt', 'createdAt', 'totalAmount'], default: 'scheduledAt' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['scheduledAt', 'createdAt', 'totalAmount'])
+  sortBy?: 'scheduledAt' | 'createdAt' | 'totalAmount' = 'scheduledAt';
+
+  @ApiPropertyOptional({ description: 'Sort direction', enum: ['asc', 'desc'], default: 'desc' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['asc', 'desc'])
+  sortOrder?: 'asc' | 'desc' = 'desc';
 }

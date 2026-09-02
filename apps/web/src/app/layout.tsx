@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { ToastProvider } from '@/components/ui/toast';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,7 +26,9 @@ export default function RootLayout({
 }): React.JSX.Element {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans`}>{children}</body>
+      <body className={`${inter.variable} font-sans`}>
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

@@ -67,6 +67,9 @@ export interface Customer {
   zipCode?: string;
   createdAt: string;
   updatedAt: string;
+  // Included relations from list/detail endpoints
+  vehicles?: Vehicle[];
+  _count?: { bookings: number };
 }
 
 export interface Vehicle {
@@ -98,6 +101,12 @@ export interface Mechanic {
   longitude?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// Detailed mechanic view returned by GET /api/v1/mechanics/:id
+export interface MechanicDetail extends Mechanic {
+  // The backend returns a list of active/assigned bookings for mechanic detail
+  bookings?: Booking[];
 }
 
 export interface ServiceCategory {
@@ -164,4 +173,58 @@ export interface DashboardMetrics {
     today: number;
     thisMonth: number;
   };
+}
+
+// Full dashboard DTO (mirrors backend DashboardMetricsDto)
+export interface DailyRevenueDatum {
+  date: string; // YYYY-MM-DD
+  revenue: number;
+  bookings: number;
+}
+
+export interface DailyBookingDatum {
+  date: string;
+  total: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface TopMechanicDto {
+  id: string;
+  name: string;
+  totalJobs: number;
+  rating: number | null;
+  completedThisMonth: number;
+  revenueThisMonth: number;
+  isAvailable: boolean;
+  specializations: string[];
+}
+
+export interface DashboardSummaryDto {
+  totalBookings: number;
+  todayBookings: number;
+  completedBookings: number;
+  pendingBookings: number;
+  cancelledBookings: number;
+  inProgressBookings: number;
+  assignedBookings: number;
+  mechanicOnTheWayBookings: number;
+  totalRevenue: number;
+  todayRevenue: number;
+  thisMonthRevenue: number;
+  activeMechanics: number;
+  availableMechanics: number;
+  totalCustomers: number;
+  newCustomersThisMonth: number;
+  avgBookingValue: number;
+  completionRate: number;
+}
+
+export interface DashboardFullDto {
+  summary: DashboardSummaryDto;
+  bookingsByStatus: Record<BookingStatus, number>;
+  revenueByDay: DailyRevenueDatum[];
+  bookingsByDay: DailyBookingDatum[];
+  topMechanics: TopMechanicDto[];
+  recentBookings: unknown[];
 }

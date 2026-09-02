@@ -10,6 +10,7 @@ import type {
   ApiError,
   PaginatedResult,
   DashboardMetrics,
+  DashboardFullDto,
   Booking,
   Mechanic,
   Customer,
@@ -47,7 +48,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
-  getMetrics: () => request<DashboardMetrics>('/dashboard/metrics'),
+  // The backend currently returns a richer envelope under `data` with a
+  // `summary` object and other fields. Map that shape to the `DashboardMetrics`
+  // type expected by the UI so components can read `bookings.total`, etc.
+  // Return the full dashboard DTO so the UI can render charts and summaries.
+  getMetrics: async (): Promise<DashboardFullDto> => {
+    const resp = await request<DashboardFullDto>('/dashboard/metrics');
+    return resp;
+  },
 };
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────

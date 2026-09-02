@@ -31,7 +31,7 @@ export class BookingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(query: ListBookingsDto): Promise<PaginatedResult<BookingDetail>> {
-    const { status, customerId, mechanicId, scheduledFrom, scheduledTo, page, limit, skip } = query;
+    const { status, customerId, mechanicId, scheduledFrom, scheduledTo, page, limit, skip, q, sortBy, sortOrder } = query;
 
     const where: Prisma.BookingWhereInput = {
       ...(status !== undefined && { status }),
@@ -47,11 +47,29 @@ export class BookingsService {
         : {}),
     };
 
+    // Full-text-ish search across customer name, vehicle license plate and service name
+    if (q && q.trim().length > 0) {
+      const term = q.trim();
+      Object.assign(where, {
+        OR: [
+          { customer: { OR: [{ firstName: { contains: term, mode: 'insensitive' } }, { lastName: { contains: term, mode: 'insensitive' } }] } },
+          { vehicle: { licensePlate: { contains: term, mode: 'insensitive' } } },
+          { service: { name: { contains: term, mode: 'insensitive' } } },
+        ],
+      });
+    }
+
+    // Determine ordering
+    const orderBy: Prisma.BookingOrderByWithRelationInput = {};
+    if (sortBy === 'createdAt') orderBy.createdAt = sortOrder as 'asc' | 'desc';
+    else if (sortBy === 'totalAmount') orderBy.totalAmount = sortOrder as 'asc' | 'desc';
+    else orderBy.scheduledAt = sortOrder as 'asc' | 'desc';
+
     const [data, total] = await Promise.all([
       this.prisma.booking.findMany({
         where,
         include: bookingWithRelations,
-        orderBy: { scheduledAt: 'desc' },
+        orderBy,
         take: limit,
         skip,
       }),
