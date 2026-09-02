@@ -1,0 +1,9 @@
+{
+  "name": "@instant-mechanic/typescript-config",
+  "version": "0.0.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "files": [
+    "tsconfig.base.json"
+  ]
+}
