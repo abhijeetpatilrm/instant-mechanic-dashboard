@@ -187,3 +187,85 @@ AI-assisted tools were used during development for code suggestions, refactoring
 ## Final checklist (evaluator)
 
 The repository is configured to be runnable locally. See the submission checklist below for PASS/NEEDS ACTION items.
+
+---
+
+**Verified architecture facts (from the repository)**
+- Monorepo with `apps/web` (Next.js) and `apps/api` (NestJS) and shared tsconfig in `packages/typescript-config`.
+- Frontend uses a typed fetch API client at `apps/web/src/lib/api-client.ts` that reads `NEXT_PUBLIC_API_URL` and calls `/api/v1`.
+- Backend entry is `apps/api/src/main.ts` — sets API prefix, URI versioning, CORS (`CORS_ORIGINS`), global `ValidationPipe`, `HttpExceptionFilter`, `TransformInterceptor`, and Swagger at `${API_PREFIX}/docs`.
+- API response envelope enforced by `TransformInterceptor` (`{ success, data, timestamp }`).
+- Prisma + PostgreSQL schema in `apps/api/prisma/schema.prisma` (models: Customer, Vehicle, Mechanic, ServiceCategory, Service, Booking; enums: BookingStatus, MechanicSpecialization).
+- Dashboard aggregation logic implemented in `apps/api/src/modules/dashboard/dashboard.service.ts` (uses `groupBy`, `aggregate`, parallel queries, and builds 30-day timeseries).
+- Booking lifecycle enforcement exists in `apps/api/src/modules/bookings/bookings.service.ts` using `BookingStatus` and `VALID_TRANSITIONS`.
+- `apps/api/package.json` includes a `prebuild` script that runs `prisma generate --schema=prisma/schema.prisma` to ensure the generated Prisma Client before build.
+- `.env.example` documents the `DATABASE_URL` format for PostgreSQL and other API envs.
+
+---
+
+**Architecture**
+
+High-level architecture
+
+The project is a focused full-stack monorepo implementing a REST-backed operations dashboard. The UI lives in `apps/web` (Next.js + React) and the API in `apps/api` (NestJS). The frontend communicates with the backend via a small typed fetch client; the backend performs domain logic and persistent storage via Prisma and PostgreSQL.
+
+Frontend architecture
+
+- Next.js App Router for the UI surface. Components use a typed client at `apps/web/src/lib/api-client.ts` for all API calls.
+- UI reads a consistent API envelope and handles loading, mutation, and error states using lightweight primitives (skeletons, toasts).
+
+Backend architecture
+
+- NestJS organizes functionality into domain modules (Dashboard, Bookings, Mechanics, Customers, Services, Health).
+- Global validation, error formatting, logging and response transformation are applied (`ValidationPipe`, `HttpExceptionFilter`, `LoggingInterceptor`, `TransformInterceptor`).
+- Swagger/OpenAPI is configured and served at `/api/docs` for exploration.
+
+Database architecture
+
+- PostgreSQL is modeled with Prisma (`apps/api/prisma/schema.prisma`). Core models include `Booking`, `Mechanic`, `Customer`, `Vehicle`, `Service`, and `ServiceCategory` with indexes to support list and aggregate queries.
+- Booking lifecycle is an enum (`BookingStatus`) and transitions are enforced in service logic.
+
+API / request flow
+
+1. Frontend `ApiClient` issues an HTTP request to `/api/v1/<resource>`.
+2. NestJS controller validates the request and delegates to services.
+3. Services execute Prisma queries (findMany, aggregate, groupBy, update/create).
+4. `TransformInterceptor` wraps successful responses in `{ success, data, timestamp }` and the client unwraps `data`.
+
+Dashboard metrics architecture
+
+- `DashboardService` composes parallel Prisma aggregates: counts, sums, `groupBy` for status and per-mechanic counts, and a 30-day booking window for time-series.
+- Top mechanics are computed by grouping completed bookings then fetching mechanic rows for metadata, avoiding N+1 queries.
+
+API documentation / Swagger
+
+- Swagger is configured in `apps/api/src/main.ts` and available at `/api/docs` when the API is running. Tags cover health, dashboard, bookings, mechanics, customers and services.
+
+Deployment architecture
+
+- The repo is ready for containerized deployment: `apps/api` is a standard Node/NestJS app, `apps/web` is a Next.js app. Both are environment-driven (`DATABASE_URL`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`).
+- The API build now guarantees Prisma Client generation (`prebuild` script), ensuring CI builds are deterministic.
+
+Key design decisions and rationale
+
+- Typed fetch client: minimal runtime dependencies and consistent typing between UI and API.
+- Server-side aggregation with Prisma: keeps heavy compute close to data and reduces client complexity.
+- Response envelope & global interceptors: consistent API shape and centralized cross-cutting concerns.
+- `prebuild` Prisma generation: prevents flaky builds due to a stale generated client and matches CI expectations.
+
+Scalability & extensibility
+
+- Parallel aggregates and DB indexes keep dashboard queries efficient; scaling the DB (read replicas, optimized queries) is the next step for high traffic.
+- Modular NestJS services make it straightforward to add new endpoints or replace Prisma queries with tuned SQL or materialized views.
+
+---
+
+**AI Tools Used**
+
+AI tools were used as development assistants during the project.
+
+- **ChatGPT** — Used for debugging, implementation guidance, code review, API design discussions, and troubleshooting deployment issues.
+- **Google Gemini** — Used for exploring implementation approaches, debugging, and validating technical decisions.
+
+All final implementation decisions, code integration, testing, and deployment were reviewed and handled as part of the project development process.
+
